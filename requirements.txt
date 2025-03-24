@@ -1,4 +1,3 @@
 flet
 requests
 plyer
-jnius
