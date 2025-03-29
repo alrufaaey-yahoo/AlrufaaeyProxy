@@ -4,14 +4,12 @@ import threading
 import select
 import logging
 import time
-import json
-import os
-from pathlib import Path
+from typing import Optional
 
-# Logging setup
+# إعدادات التسجيل
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
 
-# Proxy list
+# قائمة البروكسيات
 proxies = [
     {'host': '157.240.195.32', 'port': 8080},
     {'host': '157.240.253.39', 'port': 8080},
@@ -23,85 +21,29 @@ proxies = [
     {'host': '185.60.218.39', 'port': 8080}
 ]
 
-# Default V2Ray configuration
-DEFAULT_V2RAY_CONFIG = {
-    "inbounds": [],
-    "outbounds": [
-        {
-            "mux": {"enabled": False},
-            "protocol": "vless",
-            "proxySettings": {
-                "tag": "alrufaaey",
-                "transportLayer": True
-            },
-            "settings": {
-                "vnext": [
-                    {
-                        "address": "thumbayan.com",
-                        "port": 443,
-                        "users": [
-                            {
-                                "encryption": "none",
-                                "flow": "",
-                                "id": "f5354da1-e03e-4fd2-9cc4-209d3ea75a0d",
-                                "level": 8
-                            }
-                        ]
-                    }
-                ]
-            },
-            "streamSettings": {
-                "network": "tcp",
-                "security": "tls",
-                "tlsSettings": {
-                    "allowInsecure": False,
-                    "serverName": "thumbayan.com"
-                }
-            },
-            "tag": "VLESS"
-        },
-        {
-            "domainStrategy": "AsIs",
-            "protocol": "http",
-            "settings": {
-                "servers": [
-                    {
-                        "address": "127.0.0.1",
-                        "port": 2323
-                    }
-                ]
-            },
-            "tag": "alrufaaey"
-        }
-    ],
-    "policy": {
-        "levels": {
-            "8": {
-                "connIdle": 300,
-                "downlinkOnly": 1,
-                "handshake": 4,
-                "uplinkOnly": 1
-            }
-        }
-    }
-}
-
 class ProxyServer:
     def __init__(self):
         self.current_proxy_index = 0
         self.is_running = False
-        self.proxy_socket = None
+        self.proxy_socket: Optional[socket.socket] = None
         self.notification_id = 1
-        self.v2ray_config = DEFAULT_V2RAY_CONFIG.copy()
-        self.config_file = "v2ray_config.json"
+        self.background_service = False
+        self.page: Optional[ft.Page] = None
         
     def show_notification(self, title, message):
-        """Alternative notification function"""
+        """Display notification in the app or log if in background"""
+        if self.page and not self.background_service:
+            self.page.snack_bar = ft.SnackBar(ft.Text(f"{title}: {message}"))
+            self.page.snack_bar.open = True
+            self.page.update()
         logging.info(f"Notification: {title} - {message}")
     
     def cancel_notification(self):
-        """Alternative notification cancel function"""
+        """Cancel any active notifications"""
         logging.info("Notification canceled")
+        if self.page and not self.background_service:
+            self.page.snack_bar.open = False
+            self.page.update()
     
     def get_current_proxy(self):
         return proxies[self.current_proxy_index]
@@ -111,7 +53,13 @@ class ProxyServer:
             return
             
         self.current_proxy_index = (self.current_proxy_index + 1) % len(proxies)
-        logging.info(f"Switched to proxy: {self.get_current_proxy()}")
+        current_proxy = self.get_current_proxy()
+        logging.info(f"Switched to proxy: {current_proxy['host']}:{current_proxy['port']}")
+        self.show_notification("Proxy Switched", f"Using {current_proxy['host']}:{current_proxy['port']}")
+        
+        if self.page and not self.background_service:
+            self.page.update()
+            
         threading.Timer(20, self.switch_proxy).start()
     
     def connect_to_target(self, target_host, target_port, retries=5):
@@ -127,7 +75,7 @@ class ProxyServer:
                     raise Exception("Failed to connect to target after multiple retries")
                 time.sleep(5)
     
-    def handle_client(self, client_socket, client_address, page):
+    def handle_client(self, client_socket, client_address):
         target_socket = None
         try:
             logging.info(f"Connection from {client_address}")
@@ -143,7 +91,7 @@ class ProxyServer:
             
             headers = (
                 "CONNECT thumbayan.com:443 HTTP/1.1\r\n"
-                "Host: thumbayan.com\r\n"
+                "Host: thumbayan.com:443\r\n"
                 "User-Agent: Mozilla/5.0 (Linux; Android 14; SM-A245F Build/UP1A.231005.007; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/133.0.6943.138 Mobile Safari/537.36 [FBAN/InternetOrgApp;FBAV/166.0.0.0.169;]\r\n"
                 "x-iorg-bsid: a08359b0-d7ec-4cb5-97bf-000bdc29ec87\r\n"
                 "\r\n"
@@ -179,12 +127,14 @@ class ProxyServer:
             client_socket.close()
             logging.info(f"Connection with {client_address} closed")
     
-    def start_proxy_server(self, page):
+    def start_proxy_server(self, page=None, background=False):
         if self.is_running:
             return
             
         self.is_running = True
-        proxy_host = '0.0.0.0'
+        self.background_service = background
+        self.page = page
+        proxy_host = '127.0.0.1'
         proxy_port = 2323
         
         try:
@@ -194,7 +144,9 @@ class ProxyServer:
             
             logging.info(f"Proxy server listening on {proxy_host}:{proxy_port}")
             self.show_notification("Proxy Server", "Proxy service is running")
-            page.update()
+            
+            if page and not background:
+                page.update()
             
             self.switch_proxy()
             
@@ -203,7 +155,7 @@ class ProxyServer:
                     client_socket, client_address = self.proxy_socket.accept()
                     client_thread = threading.Thread(
                         target=self.handle_client, 
-                        args=(client_socket, client_address, page),
+                        args=(client_socket, client_address),
                         daemon=True
                     )
                     client_thread.start()
@@ -214,16 +166,17 @@ class ProxyServer:
         except Exception as e:
             logging.error(f"Proxy server error: {e}")
             self.is_running = False
-            page.update()
+            if page and not background:
+                page.update()
         finally:
             if self.proxy_socket:
                 self.proxy_socket.close()
     
-    def stop_proxy_server(self, page):
+    def stop_proxy_server(self, page=None):
         self.is_running = False
         self.cancel_notification()
         
-        # Create a temporary socket to stop accept
+        # إنشاء socket مؤقت لإيقاف accept
         try:
             temp_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             temp_socket.connect(('127.0.0.1', 2323))
@@ -232,168 +185,38 @@ class ProxyServer:
             pass
             
         logging.info("Proxy server stopped")
-        page.update()
-    
-    def save_v2ray_config(self):
-        """Save V2Ray configuration to file"""
-        try:
-            with open(self.config_file, 'w') as f:
-                json.dump(self.v2ray_config, f, indent=2)
-            logging.info("V2Ray configuration saved")
-            return True
-        except Exception as e:
-            logging.error(f"Error saving V2Ray config: {e}")
-            return False
-    
-    def load_v2ray_config(self):
-        """Load V2Ray configuration from file"""
-        try:
-            if os.path.exists(self.config_file):
-                with open(self.config_file, 'r') as f:
-                    self.v2ray_config = json.load(f)
-                logging.info("V2Ray configuration loaded")
-                return True
-        except Exception as e:
-            logging.error(f"Error loading V2Ray config: {e}")
-        return False
-    
-    def update_v2ray_id(self, new_id):
-        """Update the V2Ray user ID in the configuration"""
-        try:
-            self.v2ray_config["outbounds"][0]["settings"]["vnext"][0]["users"][0]["id"] = new_id
-            self.save_v2ray_config()
-            logging.info(f"V2Ray ID updated to: {new_id}")
-            return True
-        except Exception as e:
-            logging.error(f"Error updating V2Ray ID: {e}")
-            return False
-    
-    def get_v2ray_config_json(self):
-        """Return the V2Ray configuration as pretty-printed JSON"""
-        return json.dumps(self.v2ray_config, indent=2)
-    
-    def export_v2ray_config(self, export_path):
-        """Export V2Ray configuration to specified path"""
-        try:
-            with open(export_path, 'w') as f:
-                json.dump(self.v2ray_config, f, indent=2)
-            logging.info(f"V2Ray configuration exported to {export_path}")
-            return True
-        except Exception as e:
-            logging.error(f"Error exporting V2Ray config: {e}")
-            return False
+        if page:
+            page.update()
 
 def main(page: ft.Page):
-    page.title = "Proxy Server with V2Ray"
+    page.title = "Proxy Server"
     page.vertical_alignment = ft.MainAxisAlignment.CENTER
     page.horizontal_alignment = ft.CrossAxisAlignment.CENTER
     page.theme_mode = ft.ThemeMode.DARK
     page.padding = 20
-    page.scroll = ft.ScrollMode.AUTO
     
     proxy_server = ProxyServer()
-    proxy_server.load_v2ray_config()
     
-    # UI Elements
+    # عناصر الواجهة
     status_text = ft.Text("Proxy Server: Stopped", size=20, color=ft.colors.RED)
     current_proxy_text = ft.Text("Current Proxy: None", size=16)
-    v2ray_id_textfield = ft.TextField(
-        label="V2Ray User ID",
-        value=proxy_server.v2ray_config["outbounds"][0]["settings"]["vnext"][0]["users"][0]["id"],
-        width=400
-    )
-    
-    # Configuration display
-    config_display = ft.TextField(
-        value=proxy_server.get_v2ray_config_json(),
-        multiline=True,
-        read_only=True,
-        width=400,
-        height=300
-    )
-    
-    def update_config_display():
-        config_display.value = proxy_server.get_v2ray_config_json()
-        page.update()
-    
-    # Buttons
     toggle_button = ft.ElevatedButton(
         "Start Proxy",
         on_click=lambda e: toggle_proxy_server(e, page, proxy_server, status_text, toggle_button, current_proxy_text),
         width=200
     )
     
-    def update_v2ray_id(e):
-        new_id = v2ray_id_textfield.value.strip()
-        if new_id and proxy_server.update_v2ray_id(new_id):
-            page.snack_bar = ft.SnackBar(ft.Text("V2Ray ID updated successfully!"))
-            page.snack_bar.open = True
-            update_config_display()
-        else:
-            page.snack_bar = ft.SnackBar(ft.Text("Failed to update V2Ray ID!", color=ft.colors.RED))
-            page.snack_bar.open = True
-        page.update()
-    
-    update_id_button = ft.ElevatedButton(
-        "Update V2Ray ID",
-        on_click=update_v2ray_id,
-        width=200
-    )
-    
-    def export_config(e):
-        try:
-            # For Android, we'll save to app internal storage
-            export_path = os.path.join(str(Path.home()), "v2ray_config_export.json")
-            if proxy_server.export_v2ray_config(export_path):
-                page.snack_bar = ft.SnackBar(ft.Text(f"Config exported to {export_path}"))
-            else:
-                page.snack_bar = ft.SnackBar(ft.Text("Export failed!", color=ft.colors.RED))
-            page.snack_bar.open = True
-            page.update()
-        except Exception as ex:
-            logging.error(f"Export error: {ex}")
-            page.snack_bar = ft.SnackBar(ft.Text(f"Export error: {ex}", color=ft.colors.RED))
-            page.snack_bar.open = True
-            page.update()
-    
-    export_button = ft.ElevatedButton(
-        "Export Config",
-        on_click=export_config,
-        width=200
-    )
-    
-    # VPN Service Controls (Placeholder - would need Android integration)
-    def start_vpn_service(e):
-        page.snack_bar = ft.SnackBar(ft.Text("VPN service would be started here (requires Android integration)"))
-        page.snack_bar.open = True
-        page.update()
-    
-    vpn_button = ft.ElevatedButton(
-        "Start VPN Service",
-        on_click=start_vpn_service,
-        width=200,
-        icon=ft.icons.VPN_LOCK
-    )
-    
-    # Add UI elements
+    # إضافة عناصر الواجهة
     page.add(
         ft.Column(
             [
                 ft.Image(src="https://via.placeholder.com/150", width=150, height=150),
-                ft.Text("Proxy Server with V2Ray", size=24, weight=ft.FontWeight.BOLD),
+                ft.Text("Proxy Server App", size=24, weight=ft.FontWeight.BOLD),
                 ft.Divider(),
                 status_text,
                 current_proxy_text,
                 toggle_button,
-                ft.Divider(),
-                ft.Text("V2Ray Configuration", size=18, weight=ft.FontWeight.BOLD),
-                v2ray_id_textfield,
-                ft.Row([update_id_button, export_button], alignment=ft.MainAxisAlignment.CENTER),
-                ft.Text("Full Configuration:", size=16),
-                config_display,
-                ft.Divider(),
-                vpn_button,
-                ft.Text("Designed by Al-Rifai", size=12, color=ft.colors.GREY)
+                ft.Text("Designed by @Alrufaaey", size=12, color=ft.colors.GREY)
             ],
             spacing=20,
             alignment=ft.MainAxisAlignment.CENTER,
@@ -401,7 +224,7 @@ def main(page: ft.Page):
         )
     )
     
-    # Update proxy status
+    # تحديث حالة البروكسي الحالي
     def update_proxy_status():
         while True:
             if proxy_server.is_running:
@@ -414,10 +237,10 @@ def main(page: ft.Page):
 
 def toggle_proxy_server(e, page, proxy_server, status_text, toggle_button, current_proxy_text):
     if not proxy_server.is_running:
-        # Start server
+        # بدء الخادم
         threading.Thread(
             target=proxy_server.start_proxy_server,
-            args=(page,),
+            args=(page, False),
             daemon=True
         ).start()
         status_text.value = "Proxy Server: Running"
@@ -426,7 +249,7 @@ def toggle_proxy_server(e, page, proxy_server, status_text, toggle_button, curre
         current_proxy = proxy_server.get_current_proxy()
         current_proxy_text.value = f"Current Proxy: {current_proxy['host']}:{current_proxy['port']}"
     else:
-        # Stop server
+        # إيقاف الخادم
         proxy_server.stop_proxy_server(page)
         status_text.value = "Proxy Server: Stopped"
         status_text.color = ft.colors.RED
@@ -435,5 +258,20 @@ def toggle_proxy_server(e, page, proxy_server, status_text, toggle_button, curre
     
     page.update()
 
+def run_background_service():
+    """Run the proxy server as a background service"""
+    proxy_server = ProxyServer()
+    proxy_server.start_proxy_server(background=True)
+    
+    try:
+        while True:
+            time.sleep(1)
+    except KeyboardInterrupt:
+        proxy_server.stop_proxy_server()
+
 if __name__ == "__main__":
+    # To run as GUI app
     ft.app(target=main)
+    
+    # To run as background service (uncomment the following line)
+    # run_background_service()
