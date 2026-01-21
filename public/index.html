@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Advanced Port Listener - 32-Way Split</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <div class="logo">
+                <img src="https://via.placeholder.com/50" alt="Logo">
+                <h1>Advanced Port Listener</h1>
+            </div>
+            <div class="status-indicator">
+                <span class="status-dot active"></span>
+                <span id="statusText">System Active</span>
+            </div>
+        </header>
+
+        <!-- Main Dashboard -->
+        <main class="dashboard">
+            <!-- System Overview -->
+            <section class="card overview">
+                <h2>System Overview</h2>
+                <div class="stats-grid">
+                    <div class="stat-item">
+                        <div class="stat-label">Total Connections</div>
+                        <div class="stat-value" id="totalConnections">0</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-label">Active Sessions</div>
+                        <div class="stat-value" id="activeSessions">0</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-label">Bytes Transferred</div>
+                        <div class="stat-value" id="bytesTransferred">0 MB</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-label">System Uptime</div>
+                        <div class="stat-value" id="uptime">00:00:00</div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Connection Splitting -->
+            <section class="card splitting">
+                <h2>Connection Splitting (32-Way)</h2>
+                <div class="split-visualization">
+                    <div class="split-diagram" id="splitDiagram">
+                        <!-- سيتم توليد مخطط التقسيم ديناميكيا -->
+                    </div>
+                    <div class="split-stats">
+                        <div class="split-stat">
+                            <span>Parts:</span>
+                            <strong>32</strong>
+                        </div>
+                        <div class="split-stat">
+                            <span>Chunk Size:</span>
+                            <strong>4 KB</strong>
+                        </div>
+                        <div class="split-stat">
+                            <span>Active Splits:</span>
+                            <strong id="activeSplits">0</strong>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Workers Grid -->
+            <section class="card workers">
+                <h2>Workers Distribution (32 Workers)</h2>
+                <div class="workers-grid" id="workersGrid">
+                    <!-- سيتم توليد شبكة العمال ديناميكيا -->
+                </div>
+            </section>
+
+            <!-- Proxies -->
+            <section class="card proxies">
+                <h2>Proxy Rotation</h2>
+                <div class="proxy-list" id="proxyList">
+                    <!-- سيتم توليد قائمة البروكسيات ديناميكيا -->
+                </div>
+                <div class="proxy-controls">
+                    <button class="btn" onclick="rotateProxy()">Rotate Now</button>
+                    <button class="btn" onclick="refreshProxies()">Refresh Health</button>
+                </div>
+            </section>
+
+            <!-- Charts -->
+            <section class="card charts">
+                <h2>Performance Metrics</h2>
+                <div class="chart-container">
+                    <canvas id="throughputChart"></canvas>
+                </div>
+                <div class="chart-container">
+                    <canvas id="connectionsChart"></canvas>
+                </div>
+            </section>
+
+            <!-- Controls -->
+            <section class="card controls">
+                <h2>System Controls</h2>
+                <div class="control-buttons">
+                    <button class="btn btn-start" onclick="startSystem()">Start All Workers</button>
+                    <button class="btn btn-stop" onclick="stopSystem()">Stop All Workers</button>
+                    <button class="btn btn-restart" onclick="restartSystem()">Restart System</button>
+                    <button class="btn btn-settings" onclick="showSettings()">Settings</button>
+                </div>
+                <div class="control-status">
+                    <div class="status-item">
+                        <span>Splitter:</span>
+                        <span class="status-badge active">Enabled</span>
+                    </div>
+                    <div class="status-item">
+                        <span>Cluster:</span>
+                        <span class="status-badge active">Running</span>
+                    </div>
+                    <div class="status-item">
+                        <span>Notifications:</span>
+                        <span class="status-badge active">Active</span>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <!-- Footer -->
+        <footer class="footer">
+            <div class="footer-content">
+                <p>Advanced Port Listener v2.0 | 32-Way Connection Splitting</p>
+                <p class="signature">Designed by Al-Rifai</p>
+                <p class="stats">
+                    <span id="liveStats">Loading...</span>
+                </p>
+            </div>
+        </footer>
+    </div>
+
+    <!-- Settings Modal -->
+    <div id="settingsModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>System Settings</h3>
+                <button class="close-btn" onclick="closeSettings()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="settingsForm">
+                    <!-- سيتم توليد نموذج الإعدادات ديناميكيا -->
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="btn" onclick="saveSettings()">Save Settings</button>
+                <button class="btn btn-secondary" onclick="closeSettings()">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
