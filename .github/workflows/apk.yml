@@ -8,27 +8,32 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4 # تحديث للإصدار v4
+      - uses: actions/checkout@v4
 
       - name: Set up Python
-        uses: actions/setup-python@v5 # تحديث للإصدار v5
+        uses: actions/setup-python@v5
         with:
           python-version: '3.10'
 
-      - name: Install dependencies
+      - name: Install Python dependencies
         run: |
           python -m pip install --upgrade pip
           pip install flet
 
-      - name: Build APK
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.19.0' # نسخة مستقرة متوافقة مع Flet
+          channel: 'stable'
+
+      - name: Install Flet CLI and Build APK
         run: |
-          # ملاحظة: بناء APK يتطلب flet build apk والذي يحتاج لبيئة Flutter
-          # نستخدم flet-build لتبسيط العملية
-          pip install flet-build
+          # بناء التطبيق باستخدام flet build
+          # سيقوم flet تلقائياً باستخدام Flutter المثبت لبناء الـ APK
           flet build apk --release
 
       - name: Upload APK
-        uses: actions/upload-artifact@v4 # تحديث للإصدار v4 (المطلوب لحل المشكلة)
+        uses: actions/upload-artifact@v4
         with:
           name: alrufaaey-proxy-apk
           path: build/apk/*.apk
