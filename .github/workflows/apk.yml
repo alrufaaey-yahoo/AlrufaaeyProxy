@@ -14,8 +14,6 @@ jobs:
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
-      with:
-        fetch-depth: 0
 
     - name: Set up Python
       uses: actions/setup-python@v5
@@ -25,44 +23,14 @@ jobs:
     - name: Install system dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y \
-          openjdk-17-jdk \
-          build-essential \
-          git \
-          zip \
-          unzip \
-          libncurses5-dev \
-          libncursesw5-dev \
-          libtinfo5 \
-          cmake \
-          libffi-dev \
-          libssl-dev \
-          wget \
-          python3-pip \
-          python3-dev \
-          python3-setuptools \
-          autoconf \
-          libtool \
-          pkg-config \
-          zlib1g-dev \
-          libbz2-dev \
-          libreadline-dev \
-          libsqlite3-dev \
-          libncursesw5-dev \
-          xz-utils \
-          tk-dev \
-          libxml2-dev \
-          libxmlsec1-dev \
-          libffi-dev \
-          liblzma-dev
+        sudo apt-get install -y openjdk-17-jdk build-essential git zip unzip libncurses5-dev libncursesw5-dev libtinfo5 cmake libffi-dev libssl-dev wget python3-pip python3-dev python3-setuptools autoconf libtool pkg-config zlib1g-dev libbz2-dev libreadline-dev libsqlite3-dev libncursesw5-dev xz-utils tk-dev libxml2-dev libxmlsec1-dev libffi-dev liblzma-dev
 
     - name: Cache Python dependencies
       uses: actions/cache@v3
       with:
         path: ~/.cache/pip
         key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
-        restore-keys: |
-          ${{ runner.os }}-pip-
+        restore-keys: ${{ runner.os }}-pip-
 
     - name: Install Python dependencies
       run: |
@@ -76,61 +44,48 @@ jobs:
 title = AlrufaaeyProxy
 package.name = alrufaaeyproxy
 package.domain = org.alrufaaey
-
 source.dir = .
 source.include_exts = py,png,jpg,kv,atlas,ttf,otf,xml,mo,ini,yml,json
-
 version = 1.0
 requirements = python3,kivy==2.1.0,kivymd==1.1.1,requests,urllib3,flask,requests[socks],PySocks,asyncio,aiohttp,certifi,charset-normalizer,idna
-
 [buildozer]
 log_level = 2
-
 [app]
 android.permissions = INTERNET,ACCESS_NETWORK_STATE,WRITE_EXTERNAL_STORAGE,READ_EXTERNAL_STORAGE,FOREGROUND_SERVICE
-
 android.api = 33
 android.minapi = 21
 android.ndk = 25b
 android.sdk = 33
-android.gradle_dependencies = 
-
-android.add_src = src
-android.add_aar = aar
-
-android.archs = arm64-v8a, armeabi-v7a
-
 android.release_artifact = bin/AlrufaaeyProxy-1.0-release-unsigned.apk
-
-[buildozer]
 warn_on_root = 1
-
 EOF
 
-    - name: Cache Buildozer .buildozer_android_platform
+    - name: Cache Buildozer
       uses: actions/cache@v3
       with:
         path: |
           .buildozer_android_platform
           ~/.buildozer
         key: ${{ runner.os }}-buildozer-${{ hashFiles('buildozer.spec') }}
-        restore-keys: |
-          ${{ runner.os }}-buildozer-
+        restore-keys: ${{ runner.os }}-buildozer-
 
-    - name: Build APK (Debug)
-      run: |
-        buildozer android debug --log-level=2
-      env:
-        ANDROID_SDK_ROOT: ${{ runner.temp }}/android-sdk
-        ANDROID_NDK_ROOT: ${{ runner.temp }}/android-ndk
+    - name: Build APK Debug
+      run: buildozer android debug
 
     - name: Upload Debug APK
       uses: actions/upload-artifact@v4
       with:
-        name: AlrufaaeyProxy-debug.apk
+        name: AlrufaaeyProxy-debug
         path: bin/AlrufaaeyProxy-1.0-debug.apk
-        retention-days: 30
 
+    - name: Build APK Release Unsigned
+      run: buildozer android release
+
+    - name: Upload Release APK
+      uses: actions/upload-artifact@v4
+      with:
+        name: AlrufaaeyProxy-release-unsigned
+        path: bin/AlrufaaeyProxy-1.0-release-unsigned.apk
     - name: Build APK (Release Unsigned)
       run: |
         buildozer android release --log-level=2
