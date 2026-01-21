@@ -18,20 +18,20 @@ jobs:
       - name: Install Python dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install flet
+          pip install flet plyer
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
 
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.19.0'
+          flutter-version: '3.27.0' # الإصدار المطلوب من قبل Flet CLI الحالي
           channel: 'stable'
 
       - name: Build APK
         run: |
-          # في الإصدارات الحديثة من Flet، يتم استخدام 'flet build apk' مباشرة
-          # تمت إزالة --release لأنها قد تسبب خطأ في بعض الإصدارات أو تكون هي الافتراضية
-          flet build apk
+          # استخدام خيار --no-interaction لمنع التوقف لطلب التأكيد
+          # واستخدام yes | للموافقة التلقائية على أي طلبات أخرى
+          yes | flet build apk --no-interaction
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
