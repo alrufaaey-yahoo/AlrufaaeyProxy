@@ -8,10 +8,10 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4 # تحديث للإصدار v4
 
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5 # تحديث للإصدار v5
         with:
           python-version: '3.10'
 
@@ -23,12 +23,14 @@ jobs:
       - name: Build APK
         run: |
           # ملاحظة: بناء APK يتطلب flet build apk والذي يحتاج لبيئة Flutter
-          # هذا الملف يفترض وجود Flutter مثبت في الـ runner أو استخدام flet-build action
+          # نستخدم flet-build لتبسيط العملية
           pip install flet-build
           flet build apk --release
 
       - name: Upload APK
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4 # تحديث للإصدار v4 (المطلوب لحل المشكلة)
         with:
           name: alrufaaey-proxy-apk
           path: build/apk/*.apk
+          if-no-files-found: error
+          retention-days: 7
