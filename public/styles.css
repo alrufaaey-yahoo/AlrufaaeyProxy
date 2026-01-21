@@ -569,3 +569,58 @@ body {
         flex-direction: column;
     }
 }
+/* Animation for notifications */
+@keyframes slideIn {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+@keyframes slideOut {
+    from {
+        transform: translateX(0);
+        opacity: 1;
+    }
+    to {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+}
+
+/* Animation for worker cells */
+@keyframes pulseWorker {
+    0%, 100% {
+        box-shadow: 0 0 0 0 rgba(102, 126, 234, 0.4);
+    }
+    50% {
+        box-shadow: 0 0 0 10px rgba(102, 126, 234, 0);
+    }
+}
+
+.worker-cell.active {
+    animation: pulseWorker 2s infinite;
+}
+
+/* Gradient animations */
+.gradient-bg {
+    background: linear-gradient(-45deg, #667eea, #764ba2, #ec4899, #f59e0b);
+    background-size: 400% 400%;
+    animation: gradient 15s ease infinite;
+}
+
+@keyframes gradient {
+    0% {
+        background-position: 0% 50%;
+    }
+    50% {
+        background-position: 100% 50%;
+    }
+    100% {
+        background-position: 0% 50%;
+    }
+}
